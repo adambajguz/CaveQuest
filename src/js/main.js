@@ -5,7 +5,7 @@ var config = {
     physics: {
         default: 'arcade',
         arcade: {
-            gravity: {y: 900},
+            gravity: {y: 1000},
             debug: false
         }
     },
@@ -53,6 +53,9 @@ function create() {
     var coinTiles = map.addTilesetImage('coin');
     // add coins as tiles
     coinLayer = map.createDynamicLayer('Coins', coinTiles, 0, 0);
+
+
+    decorationLayer = map.createDynamicLayer('Decorations', groundTiles, 0, 0);
 
     // set the boundaries of our game world
     this.physics.world.bounds.width = groundLayer.width;
@@ -135,6 +138,6 @@ function update(time, delta) {
     // jump 
     if (cursors.up.isDown && player.body.onFloor())
     {
-        player.body.setVelocityY(-500);        
+        player.body.setVelocityY(-700);        
     }
 }
