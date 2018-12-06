@@ -44,10 +44,6 @@ function preloadTextures(prevThis) {
         frameWidth: 64,
         frameHeight: 64
     });
-
-    prevThis.load.image('icon:coin', 'assets/coin_icon.png');
-    prevThis.load.image('font:numbers', 'assets/numbers.png');
-
 }
 
 function preloadAudio(prevThis) {
@@ -104,32 +100,36 @@ function createPlayer(prevThis) {
     player.setCollideWorldBounds(true); // don't go out of the map    
 
     // small fix to our player images, we resize the physics body object slightly
-    player.body.setSize(player.width, player.height - 9);
+    player.body.setSize(player.width, player.height - 16);
     player.y = 10*64;
     // player will collide with the level tiles 
     prevThis.physics.add.collider(groundLayer, player);
 }
 
 function createPlayerAnims(prevThis) {
+    //https://www.leshylabs.com/apps/sstool/
     prevThis.anims.create({
         key: 'walk',
         frames: prevThis.anims.generateFrameNames('player', {
             prefix: 'p1_walk',
             start: 1,
-            end: 8,
+            end: 6,
             zeroPad: 2
         }),
-        frameRate: 8,
+        frameRate: 10,
         repeat: -1
     });
 
     prevThis.anims.create({
         key: 'idle',
-        frames: [{
-            key: 'player',
-            frame: 'p1_stand'
-        }],
-        frameRate: 8,
+        frames: prevThis.anims.generateFrameNames('player', {
+            prefix: 'p1_stand',
+            start: 1,
+            end: 2,
+            zeroPad: 2
+        }),
+        frameRate: 4,
+        repeat: -1
     });
 }
 
