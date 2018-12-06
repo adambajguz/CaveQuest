@@ -28,6 +28,7 @@ var groundLayer, coinLayer;
 var text;
 var score = 0;
 var coinLayer;
+var overlapObjectsGroup;
 
 function preload() {
     // map made with Tiled in JSON format
@@ -52,9 +53,6 @@ function preload() {
 }
 
 function create() {
-    //game.plugins.add(Phaser.Plugin.TilemapPlus); // ES6 if create() is a method override
-    //game.tilemap.plus.animation.enable();
-
     // load the map 
     map = this.make.tilemap({
         key: 'map'
@@ -68,10 +66,7 @@ function create() {
     // the player will collide with this layer
     groundLayer.setCollisionByExclusion([-1]);
 
-    // coin image used as tileset
-    var coinTiles = map.addTilesetImage('coin');
-    // add coins as tiles
-    //coinLayer = map.createDynamicLayer('Coins', coinTiles, 0, 0);
+
 
 
     // set the boundaries of our game world
@@ -90,7 +85,10 @@ function create() {
     this.physics.add.collider(groundLayer, player);
 
 
-
+    // coin image used as tileset
+    var coinTiles = map.addTilesetImage('coin');
+    // add coins as tiles
+    //coinLayer = map.createDynamicLayer('Coins', coinTiles, 0, 0);
     this.anims.create({
         key: 'spin',
         frames: this.anims.generateFrameNumbers('coin', {
@@ -101,30 +99,34 @@ function create() {
         repeat: -1
     });
 
-    this.coinGroup = this.physics.add.staticGroup();
 
     coinLayer = map.createFromObjects('CoinsObj', 101, {
         key: 'coin'
     });
-    this.anims.play('spin', coinLayer);
+    
+    // this.anims.play('spin', coinLayer);
+    this.coinGroup = this.physics.add.staticGroup();
 
-    let overlapObjectsGroup = this.physics.add.staticGroup({
+    overlapObjectsGroup = this.physics.add.staticGroup({
 
     });
 
 
     coinLayer.forEach(coin => {
         let obj = overlapObjectsGroup.create(coin.x, coin.y, 'coin');
-
-        obj.body.width = coin.width; //body of the physics body
+        obj.body.width = coin.width;
         obj.body.height = coin.height;
-        obj.body.immovable = true;
+        obj.visible = true;
+        coin.visible = false;
+        this.anims.play('spin', obj);
+
     });
     overlapObjectsGroup.refresh(); //physics body needs to refresh
     console.log(overlapObjectsGroup);
 
     this.physics.add.overlap(player, overlapObjectsGroup, collectCoin, null, this);
 
+    this.anims.play('spin', coinLayer);
 
 
     var keyTiles = map.addTilesetImage('key');
@@ -186,8 +188,11 @@ function create() {
 
 // this function will be called when the player touches a coin
 function collectCoin(player, coin) {
+    console.log(coinLayer);
+    console.log(coin);
+
     coin.destroy();
-console.log(coin)
+
     score++; // add 10 points to the score
     text.setText(score); // set the text to show the current score
 }
