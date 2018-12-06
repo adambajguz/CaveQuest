@@ -1,7 +1,7 @@
 var config = {
     type: Phaser.AUTO,
-    width: 800,
-    height: 600,
+    width: 64*14 + 10,
+    height: 64*11 + 10,
     physics: {
         default: 'arcade',
         arcade: {
@@ -24,10 +24,11 @@ var game = new Phaser.Game(config);
 var map;
 var player;
 var cursors;
-var groundLayer, decorationLayer, keyLayer, coinObjects, coinObjectsGroup;
-var scoreValText, keysValText;
+var groundLayer, decorationLayer, keyLayer, stillLavaLayer, lavaObjects, lavaObjectsGroup, coinObjects, coinObjectsGroup;
+var scoreValText, deadsValText, keysValText;
 var score = 0;
 var keys = 0;
+var deads = 0;
 
 function preloadTextures(prevThis) {
     // tiles in spritesheet 
@@ -41,6 +42,11 @@ function preloadTextures(prevThis) {
         frameHeight: 64
     });
     prevThis.load.spritesheet('key', 'assets/key.png', {
+        frameWidth: 64,
+        frameHeight: 64
+    });
+
+    prevThis.load.spritesheet('lava', 'assets/lava.png', {
         frameWidth: 64,
         frameHeight: 64
     });
@@ -61,6 +67,7 @@ function preloadAudio(prevThis) {
 }
 
 function preload() {
+    console.log("dead");
     // map made with Tiled in JSON format
     this.load.tilemapTiledJSON('map', 'assets/map.json');
 
@@ -80,7 +87,7 @@ function loadMap(prevThis) {
 
     // tiles for the ground layer
     var groundTiles = map.addTilesetImage('cave');
-    var coinTiles = map.addTilesetImage('coin');
+    // var coinTiles = map.addTilesetImage('coin');
 
     // create the ground layer
     groundLayer = map.createDynamicLayer('World', groundTiles, 0, 0);
@@ -100,7 +107,7 @@ function createPlayer(prevThis) {
     player.setCollideWorldBounds(true); // don't go out of the map    
 
     // small fix to our player images, we resize the physics body object slightly
-    player.body.setSize(player.width, player.height - 16);
+    player.body.setSize(player.width-16, player.height - 16);
     player.y = 10*64;
     // player will collide with the level tiles 
     prevThis.physics.add.collider(groundLayer, player);
@@ -141,20 +148,20 @@ function createCoins(prevThis) {
         key: 'spin',
         frames: prevThis.anims.generateFrameNumbers('coin', {
             start: 0,
-            end: 3
+            end: 2
         }),
         frameRate: 4,
         repeat: -1
     });
 
 
-    coinLayer = map.createFromObjects('CoinsObj', 101, {
+    coinObjects = map.createFromObjects('CoinsObj', 101, {
         key: 'coin'
     });
 
     coinObjectsGroup = prevThis.physics.add.staticGroup({});
 
-    coinLayer.forEach(coin => {
+    coinObjects.forEach(coin => {
         let obj = coinObjectsGroup.create(coin.x, coin.y, 'coin');
         obj.body.width = coin.width;
         obj.body.height = coin.height;
@@ -166,6 +173,42 @@ function createCoins(prevThis) {
     coinObjectsGroup.refresh(); //physics body needs to refresh
 
     prevThis.physics.add.overlap(player, coinObjectsGroup, collectCoin, null, prevThis);
+
+}
+function createLava(prevThis) {
+    var lavaTiles = map.addTilesetImage('lava');
+    stillLavaLayer = map.createDynamicLayer('Lava', lavaTiles, 0, 0);
+
+    prevThis.anims.create({
+        key: 'lavaAnim',
+        frames: prevThis.anims.generateFrameNumbers('lava', {
+            start: 0,
+            end: 2
+        }),
+        frameRate: 3,
+        repeat: -1
+    });
+
+    // console.log(map);
+
+    lavaObjects = map.createFromObjects('LavaObj', 106, {
+        key: 'lava'
+    });
+
+    lavaObjectsGroup = prevThis.physics.add.staticGroup({});
+
+    lavaObjects.forEach(coin => {
+        let obj = lavaObjectsGroup.create(coin.x, coin.y, 'lava');
+        obj.body.width = coin.width;
+        obj.body.height = coin.height;
+        obj.visible = true;
+        coin.visible = false;
+        prevThis.anims.play('lavaAnim', obj);
+
+    });
+    lavaObjectsGroup.refresh(); //physics body needs to refresh
+
+    prevThis.physics.add.overlap(player, lavaObjectsGroup, lavaDie, null, prevThis);
 
 }
 
@@ -186,37 +229,30 @@ function createKeys(prevThis) {
 }
 
 function createScoreText(prevThis) {
-    // const NUMBERS_STR = '0123456789X ';
-    // var coinFont = prevThis.add.retroFont('font:numbers', 20, 26, NUMBERS_STR, 6);
-
-    // var keyIcon = prevThis.make.image(0, 19, 'icon:key');
-    // keyIcon.anchor.set(0, 0.5);
-
-    // let coinIcon = prevThis.make.image(prevThis.keyIcon.width + 7, 0, 'icon:coin');
-    // let coinScoreImg = prevThis.make.image(coinIcon.x + coinIcon.width,
-    //     coinIcon.height / 2, prevThis.coinFont);
-    // coinScoreImg.anchor.set(0, 0.5);
-
-    // var hud = prevThis.game.add.group();
-    // hud.add(coinIcon);
-    // hud.add(coinScoreImg);
-    // hud.add(prevThis.keyIcon);
-    // hud.position.set(10, 10); 
-
     // Add Text to top of game.
     var textStyle_Key = { font: "bold 14px sans-serif", fill: "#46c0f9", align: "center" };
     var textStyle_Value = { font: "bold 18px sans-serif", fill: "#fff", align: "center" };
 
+    var textStyleDeads_Key = { font: "bold 14px sans-serif", fill: "#B00020", align: "center" };
+    var textStyleDeads_Value = { font: "bold 18px sans-serif", fill: "#B00020", align: "center" };
+
+
     var scoreText = prevThis.add.text(15, 18, "SCORE", textStyle_Key);
-    scoreValText = prevThis.add.text(85, 16, score.toString(), textStyle_Value);
+    scoreValText = prevThis.add.text(80, 16, score.toString(), textStyle_Value);
+
+    var deadsText = prevThis.add.text(370, 12, "DEADS", textStyleDeads_Key);
+    deadsValText = prevThis.add.text(435, 10, deads.toString(), textStyleDeads_Value);
 
     var keysText = prevThis.add.text(690, 18, "KEYS", textStyle_Key);
-    keysValText = prevThis.add.text(748, 16, keys.toString() + " / 3", textStyle_Value);
+    keysValText = prevThis.add.text(743, 16, keys.toString() + " / 3", textStyle_Value);
 
     // fix the text to the camera
     scoreText.setScrollFactor(0);
+    deadsText.setScrollFactor(0);
     keysText.setScrollFactor(0);
+
     scoreValText.setScrollFactor(0);
+    deadsValText.setScrollFactor(0);
     keysValText.setScrollFactor(0);
 }
 
@@ -232,6 +268,7 @@ function create() {
     createPlayerAnims(this);
     createCoins(this);
     createKeys(this);
+    createLava(this);
     createScoreText(this);
     createAudio(this);
 
@@ -257,6 +294,22 @@ function collectCoin(player, coin) {
     updateScore();
 }
 
+function lavaDie(player, lava) {
+    this.physics.world.colliders.destroy();
+
+    this.sound.play('sfx:coin');
+
+    this.scene.restart();
+
+    score -= 20;
+    keys = 0;
+    deads++;
+
+    updateScore();
+    updateKeys();
+    updateDeads();
+}
+
 // this function will be called when the player touches a coin
 function collectKey(sprite, tile) {
     this.sound.play('sfx:key');
@@ -280,6 +333,11 @@ function updateScore()
 function updateKeys()
 {
     keysValText.setText(keys.toString() + " / 3");
+}
+
+function updateDeads()
+{
+    deadsValText.setText(deads.toString());
 }
 
 
