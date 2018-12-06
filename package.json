@@ -4,12 +4,15 @@
   "description": "",
   "main": "script.js",
   "scripts": {
-     "start": "lite-server --baseDir ./src"
+    "start": "lite-server --baseDir ./src"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "lite-server": "^2.4.0"
+  },
+  "dependencies": {
+    "phaser-tilemap-plus": "^0.10.2"
   }
 }
