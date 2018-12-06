@@ -66,7 +66,7 @@ function preloadAudio(prevThis) {
 
 function preload() {
     // map made with Tiled in JSON format
-    this.load.tilemapTiledJSON('map', 'levels/level0.json');
+    this.load.tilemapTiledJSON('map', 'levels/map.json');
 
     preloadTextures(this);
 
