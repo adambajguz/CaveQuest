@@ -25,29 +25,55 @@ var map;
 var player;
 var cursors;
 var groundLayer, decorationLayer, keyLayer, coinObjects, coinObjectsGroup;
-var text;
+var scoreValText, keysValText;
 var score = 0;
+var keys = 0;
+
+function preloadTextures(prevThis) {
+    // tiles in spritesheet 
+    prevThis.load.spritesheet('cave', 'assets/cave.png', {
+        frameWidth: 64,
+        frameHeight: 64
+    });
+
+    prevThis.load.spritesheet('coin', 'assets/coin.png', {
+        frameWidth: 64,
+        frameHeight: 64
+    });
+    prevThis.load.spritesheet('key', 'assets/key.png', {
+        frameWidth: 64,
+        frameHeight: 64
+    });
+
+    prevThis.load.image('icon:coin', 'assets/coin_icon.png');
+    prevThis.load.image('font:numbers', 'assets/numbers.png');
+
+}
+
+function preloadAudio(prevThis) {
+    prevThis.load.audio('sfx:coin', 'audio/coin.wav', {
+        instances: 1
+    });
+
+    prevThis.load.audio('sfx:jump', 'audio/jump.wav', {
+        instances: 1
+    });
+
+    prevThis.load.audio('sfx:key', 'audio/key.wav', {
+        instances: 1
+    });
+}
 
 function preload() {
     // map made with Tiled in JSON format
-    this.load.tilemapTiledJSON('map', 'assets/map.json');
-    // tiles in spritesheet 
-    this.load.spritesheet('cave', 'assets/cave.png', {
-        frameWidth: 64,
-        frameHeight: 64
-    });
+    this.load.tilemapTiledJSON('map', 'levels/level0.json');
 
-    this.load.spritesheet('coin', 'assets/coin.png', {
-        frameWidth: 64,
-        frameHeight: 64
-    });
-    this.load.spritesheet('key', 'assets/key.png', {
-        frameWidth: 64,
-        frameHeight: 64
-    });
+    preloadTextures(this);
 
     // player animations
     this.load.atlas('player', 'assets/player.png', 'assets/player.json');
+
+    preloadAudio(this);
 }
 
 function loadMap(prevThis) {
@@ -138,7 +164,6 @@ function createCoins(prevThis) {
 
     });
     coinObjectsGroup.refresh(); //physics body needs to refresh
-    console.log(coinObjectsGroup);
 
     prevThis.physics.add.overlap(player, coinObjectsGroup, collectCoin, null, prevThis);
 
@@ -161,14 +186,44 @@ function createKeys(prevThis) {
 }
 
 function createScoreText(prevThis) {
-    // this text will show the score
-    text = prevThis.add.text(20, 20, 'Score: 0', {
-        fontSize: '20px',
-        fill: '#ffffff'
-    });
-    
+    // const NUMBERS_STR = '0123456789X ';
+    // var coinFont = prevThis.add.retroFont('font:numbers', 20, 26, NUMBERS_STR, 6);
+
+    // var keyIcon = prevThis.make.image(0, 19, 'icon:key');
+    // keyIcon.anchor.set(0, 0.5);
+
+    // let coinIcon = prevThis.make.image(prevThis.keyIcon.width + 7, 0, 'icon:coin');
+    // let coinScoreImg = prevThis.make.image(coinIcon.x + coinIcon.width,
+    //     coinIcon.height / 2, prevThis.coinFont);
+    // coinScoreImg.anchor.set(0, 0.5);
+
+    // var hud = prevThis.game.add.group();
+    // hud.add(coinIcon);
+    // hud.add(coinScoreImg);
+    // hud.add(prevThis.keyIcon);
+    // hud.position.set(10, 10); 
+
+    // Add Text to top of game.
+    var textStyle_Key = { font: "bold 14px sans-serif", fill: "#46c0f9", align: "center" };
+    var textStyle_Value = { font: "bold 18px sans-serif", fill: "#fff", align: "center" };
+
+    var scoreText = prevThis.add.text(15, 18, "SCORE", textStyle_Key);
+    scoreValText = prevThis.add.text(85, 16, score.toString(), textStyle_Value);
+
+    var keysText = prevThis.add.text(690, 18, "KEYS", textStyle_Key);
+    keysValText = prevThis.add.text(748, 16, keys.toString() + " / 3", textStyle_Value);
+
     // fix the text to the camera
-    text.setScrollFactor(0);
+    scoreText.setScrollFactor(0);
+    keysText.setScrollFactor(0);
+    scoreValText.setScrollFactor(0);
+    keysValText.setScrollFactor(0);
+}
+
+function createAudio(prevThis) {
+    prevThis.sound.add('sfx:coin');
+    prevThis.sound.add('sfx:jump');
+    prevThis.sound.add('sfx:key');
 }
 
 function create() {
@@ -178,7 +233,7 @@ function create() {
     createCoins(this);
     createKeys(this);
     createScoreText(this);
-
+    createAudio(this);
 
 
     cursors = this.input.keyboard.createCursorKeys();
@@ -190,14 +245,11 @@ function create() {
 
     // set background color, so the sky is not black    
     this.cameras.main.setBackgroundColor('#140C1C');
-
-
 }
 
 // this function will be called when the player touches a coin
 function collectCoin(player, coin) {
-    console.log(coinLayer);
-    console.log(coin);
+    this.sound.play('sfx:coin');
 
     coin.destroy();
 
@@ -207,15 +259,27 @@ function collectCoin(player, coin) {
 
 // this function will be called when the player touches a coin
 function collectKey(sprite, tile) {
+    this.sound.play('sfx:key');
+
     keyLayer.removeTileAt(tile.x, tile.y); // remove the tile/coin
-    score++;
+
+    score += 10;
+    keys++;
+
     updateScore();
+    updateKeys();
+
     return false;
 }
 
 function updateScore()
 {
-    text.setText('Score: ' + score); // set the text to show the current score
+    scoreValText.setText(score.toString());
+}
+
+function updateKeys()
+{
+    keysValText.setText(keys.toString() + " / 3");
 }
 
 
@@ -236,6 +300,8 @@ function update(time, delta) {
     }
 
     if (cursors.up.isDown && player.body.onFloor()) {
+        this.sound.play('sfx:jump');
+
         player.body.setVelocityY(-700);
     }
 }
