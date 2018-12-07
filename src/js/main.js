@@ -225,6 +225,17 @@ function createCoins(prevThis) {
         repeat: -1
     });
 
+    prevThis.anims.create({
+        key: 'spin2',
+        frames: prevThis.anims.generateFrameNumbers('coin', {
+            start: 0,
+            end: 2
+        }),
+        frameRate: 5,
+        repeat: -1
+    });
+
+    var a = true;
 
     coinObjects = map.createFromObjects('CoinsObj', 101, {
         key: 'coin'
@@ -238,8 +249,13 @@ function createCoins(prevThis) {
         obj.body.height = coin.height;
         obj.visible = true;
         coin.visible = false;
-        prevThis.anims.play('spin', obj);
 
+        if(a==true)
+            prevThis.anims.play('spin', obj);
+        else          
+            prevThis.anims.play('spin2', obj);
+
+        a = !a;
     });
     coinObjectsGroup.refresh(); //physics body needs to refresh
 
