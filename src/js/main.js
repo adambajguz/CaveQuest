@@ -454,6 +454,7 @@ function exitLevel(sprite, tile) {
             this.sound.play('sfx:levelEnd');
 
         score += 100;
+        keys = 0;
 
         setLevelNumberToLocalStorage(getLevelNumberFromLocalStorage() + 1);
 
