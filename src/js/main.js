@@ -400,8 +400,7 @@ function create() {
     // make the camera follow the player
     this.cameras.main.startFollow(player);
 
-    // set background color, so the sky is not black    
-    this.cameras.main.setBackgroundColor('#140C1C');
+    this.cameras.main.setBackgroundColor('#1D1128');
 }
 
 // this function will be called when the player touches a coin
@@ -450,14 +449,16 @@ function collectKey(sprite, tile) {
 }
 
 function exitLevel(sprite, tile) {
-    if(muted == false)
-        this.sound.play('sfx:levelEnd');
+    if(keys == 3) {
+        if(muted == false)
+            this.sound.play('sfx:levelEnd');
 
-    score += 100;
+        score += 100;
 
-    setLevelNumberToLocalStorage(getLevelNumberFromLocalStorage() + 1);
+        setLevelNumberToLocalStorage(getLevelNumberFromLocalStorage() + 1);
 
-    this.scene.restart();
+        this.scene.restart();
+    }
 
     return false;
 }

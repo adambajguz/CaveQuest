@@ -3,7 +3,7 @@ Celem projektu jest stworzenie prostej gry dzia³aj¹cej w elemencie canvas (liczb
 
 Podstawa na zaliczenie +(1): sterowanie mysz¹ lub/i klawiatur¹, poruszaj¹ce siê obiekty, kolizje miêdzy nimi, prosta logika.
 +(+1) Przynajmniej czêœæ obiektów jest animowana (klatki animacji).
-?dodaæ animowan¹ lawê i wrogów(+1) Kilka typów obiektów ró¿ni¹cych siê zachowaniem (np. wrogowie, przeszkody i skarby).
++dodaæ animowan¹ lawê i wrogów(+1) Kilka typów obiektów ró¿ni¹cych siê zachowaniem (np. wrogowie, przeszkody i skarby).
 ?wrogowie jak w mario(+1) Bardziej z³o¿ona logika i zale¿noœci miêdzy elementami gry (np. AI wrogów, zarz¹dzanie zasobami).
 -(+1) Kilka typów interakcji (np. strzelanie i zostawianie pu³apek).
 +(+1) Wiêkszy œwiat gry (np. scrollowana planszê lub przechodzenie miêdzy ekranami pomieszczeñ).
