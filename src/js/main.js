@@ -21,15 +21,19 @@ var config = {
 
 var game = new Phaser.Game(config);
 
+const LEVEL_COUNT = 3;
+
 var map;
 var player;
 var cursors;
-var groundLayer, decorationLayer, keyLayer, stillLavaLayer, lavaObjects, lavaObjectsGroup, coinObjects, coinObjectsGroup;
-var scoreValText, deadsValText, keysValText;
+var groundLayer, decorationLayer, keyLayer, exitDoorLayer, stillLavaLayer, lavaObjects, lavaObjectsGroup, coinObjects, coinObjectsGroup;
+var groundTiles;
+var scoreValText, levelValText, deathsValText, keysValText;
 var muteButton, muted = false;
 var score = 0;
 var keys = 0;
-var deads = 0;
+var deaths = 0;
+var levelId;
 
 function preloadTextures(prevThis) {
     // tiles in spritesheet 
@@ -51,6 +55,11 @@ function preloadTextures(prevThis) {
         frameWidth: 64,
         frameHeight: 64
     });
+
+    prevThis.load.spritesheet('door', 'assets/door.png', {
+        frameWidth: 64,
+        frameHeight: 64
+    });
 }
 
 function preloadAudio(prevThis) {
@@ -65,12 +74,24 @@ function preloadAudio(prevThis) {
     prevThis.load.audio('sfx:key', 'audio/key.wav', {
         instances: 1
     });
+
+    prevThis.load.audio('sfx:death', 'audio/death.wav', {
+        instances: 1
+    });
+
+    prevThis.load.audio('sfx:levelEnd', 'audio/level_end.wav', {
+        instances: 1
+    });
 }
 
 function preload() {
-    console.log("dead");
     // map made with Tiled in JSON format
-    this.load.tilemapTiledJSON('map', 'assets/map.json');
+    var levelCounter = getLevelNumberFromLocalStorage();
+
+    var level = (levelCounter || 0) % LEVEL_COUNT
+    levelId = pad(level, 2);
+
+    this.load.tilemapTiledJSON('map' + levelId, 'assets/level' + levelId + ".json");
 
     preloadTextures(this);
 
@@ -81,14 +102,35 @@ function preload() {
     preloadAudio(this);
 }
 
+function getLevelNumberFromLocalStorage() {
+    var levelNumber = localStorage.getItem("levelNumber");
+
+    if (levelNumber == null || (typeof (levelNumber) == "undefined") || levelNumber == "undefined") {
+        localStorage.setItem("levelNumber", 0);
+        return 0;
+    }
+
+    return parseInt(levelNumber);
+}
+
+function setLevelNumberToLocalStorage(levelNumber) {
+    localStorage.setItem("levelNumber", (levelNumber || 0) % LEVEL_COUNT);
+}
+
+function pad(n, width, z) {
+    z = z || '0';
+    n = n + '';
+    return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
+  }
+
 function loadMap(prevThis) {
     // load the map 
     map = prevThis.make.tilemap({
-        key: 'map'
+        key: 'map' + levelId
     });
 
     // tiles for the ground layer
-    var groundTiles = map.addTilesetImage('cave');
+    groundTiles = map.addTilesetImage('cave');
     // var coinTiles = map.addTilesetImage('coin');
 
     // create the ground layer
@@ -110,7 +152,7 @@ function createPlayer(prevThis) {
 
     // small fix to our player images, we resize the physics body object slightly
     player.body.setSize(player.width-16, player.height - 16);
-    player.y = 10*64;
+    player.y = 5*64;
     // player will collide with the level tiles 
     prevThis.physics.add.collider(groundLayer, player);
 }
@@ -237,12 +279,12 @@ function createLava(prevThis) {
     });
     lavaObjectsGroup.refresh(); //physics body needs to refresh
 
-    prevThis.physics.add.overlap(player, lavaObjectsGroup, lavaDie, null, prevThis);
+    prevThis.physics.add.overlap(player, lavaObjectsGroup, lavaDeath, null, prevThis);
 
 }
 
 function createKeys(prevThis) {
-    keyTiles = map.addTilesetImage('key');
+    var keyTiles = map.addTilesetImage('key');
     // add coins as tiles
     keyLayer = map.createDynamicLayer('Keys', keyTiles, 0, 0);
 
@@ -257,6 +299,13 @@ function createKeys(prevThis) {
     prevThis.physics.add.overlap(player, keyLayer);
 }
 
+function createExitDoor(prevThis) {
+    var doorTiles = map.addTilesetImage('door');
+    exitDoorLayer = map.createDynamicLayer('ExitDoor', doorTiles, 0, 0);
+
+    exitDoorLayer.setTileIndexCallback(110, exitLevel, prevThis);
+}
+
 function createScoreText(prevThis) {
     // Add Text to top of game.
     var textStyle_Key = { font: "bold 14px sans-serif", fill: "#46c0f9", align: "center" };
@@ -265,23 +314,27 @@ function createScoreText(prevThis) {
     var textStyleDeads_Key = { font: "bold 14px sans-serif", fill: "#B00020", align: "center" };
     var textStyleDeads_Value = { font: "bold 18px sans-serif", fill: "#B00020", align: "center" };
 
+    var scoreText = prevThis.add.text(15, 38, "SCORE", textStyle_Key);
+    scoreValText = prevThis.add.text(80, 36, score.toString(), textStyle_Value);
 
-    var scoreText = prevThis.add.text(15, 18, "SCORE", textStyle_Key);
-    scoreValText = prevThis.add.text(80, 16, score.toString(), textStyle_Value);
+    var levelText = prevThis.add.text(21, 18, "LEVEL", textStyle_Key);
+    levelValText = prevThis.add.text(80, 16, "#" + levelId, textStyle_Value);
 
-    var deadsText = prevThis.add.text(370, 12, "DEADS", textStyleDeads_Key);
-    deadsValText = prevThis.add.text(435, 10, deads.toString(), textStyleDeads_Value);
+    var deathsText = prevThis.add.text(370, 12, "DEATHS", textStyleDeads_Key);
+    deathsValText = prevThis.add.text(435, 10, deaths.toString(), textStyleDeads_Value);
 
     var keysText = prevThis.add.text(690, 18, "KEYS", textStyle_Key);
     keysValText = prevThis.add.text(743, 16, keys.toString() + " / 3", textStyle_Value);
 
     // fix the text to the camera
     scoreText.setScrollFactor(0);
-    deadsText.setScrollFactor(0);
+    levelText.setScrollFactor(0);
+    deathsText.setScrollFactor(0);
     keysText.setScrollFactor(0);
 
     scoreValText.setScrollFactor(0);
-    deadsValText.setScrollFactor(0);
+    levelValText.setScrollFactor(0);
+    deathsValText.setScrollFactor(0);
     keysValText.setScrollFactor(0);
 }
 
@@ -289,44 +342,49 @@ function createAudio(prevThis) {
     prevThis.sound.add('sfx:coin');
     prevThis.sound.add('sfx:jump');
     prevThis.sound.add('sfx:key');
+    prevThis.sound.add('sfx:levelEnd');
 }
 
 function createMuteButton(prevThis) {
     muteButton = prevThis.add.sprite(860, 40, 'mute').setInteractive();
     muteButton.setScrollFactor(0);
-    muteButton.anims.play('unmuted', true);
+    setMuteButton();
     
     muteButton.on('pointerover', function (event) {
         if(muted == true)
             muteButton.anims.play('mutedHover', true);
         else
             muteButton.anims.play('unmutedHover', true);
-
-
     });
-    
+
     muteButton.on('pointerout', function (event) { 
-        if(muted == true)
-            muteButton.anims.play('muted', true);
-        else 
-            muteButton.anims.play('unmuted', true);
+        setMuteButton();
     });
 
     muteButton.on('pointerdown', function (event) { 
         muted = !muted;
-        if(muted == true)
-            muteButton.anims.play('muted', true);
-        else 
-            muteButton.anims.play('unmuted', true);
-
-
+        setMuteButton();
     });
+}
+
+function setMuteButton()
+{
+    if(muted == true)
+        muteButton.anims.play('muted', true);
+    else 
+        muteButton.anims.play('unmuted', true);
 }
 
 function create() {
     loadMap(this);
+
+    createExitDoor(this);
+
     createPlayer(this);
     createPlayerAnims(this);
+
+    this.physics.add.overlap(player, exitDoorLayer);
+
     createCoins(this);
     createKeys(this);
     createLava(this);
@@ -357,16 +415,16 @@ function collectCoin(player, coin) {
     updateScore();
 }
 
-function lavaDie(player, lava) {
+function lavaDeath(player, lava) {
     // adds 3 times not one -needs fixing 
     this.physics.world.colliders.destroy();
 
     if(muted == false)
-        this.sound.play('sfx:coin');
+        this.sound.play('sfx:death');
 
     score -= 20;
     keys = 0;
-    deads++;
+    deaths++;
 
     updateScore();
     updateKeys();
@@ -391,6 +449,19 @@ function collectKey(sprite, tile) {
     return false;
 }
 
+function exitLevel(sprite, tile) {
+    if(muted == false)
+        this.sound.play('sfx:levelEnd');
+
+    score += 100;
+
+    setLevelNumberToLocalStorage(getLevelNumberFromLocalStorage() + 1);
+
+    this.scene.restart();
+
+    return false;
+}
+
 function updateScore()
 {
     scoreValText.setText(score.toString());
@@ -403,7 +474,7 @@ function updateKeys()
 
 function updateDeads()
 {
-    deadsValText.setText(deads.toString());
+    deathsValText.setText(deaths.toString());
 }
 
 
