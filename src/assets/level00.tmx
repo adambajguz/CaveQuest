@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.2" tiledversion="1.2.1" orientation="orthogonal" renderorder="left-down" width="47" height="16" tilewidth="64" tileheight="64" infinite="0" backgroundcolor="#140c1c" nextlayerid="36" nextobjectid="369">
+<map version="1.2" tiledversion="1.2.1" orientation="orthogonal" renderorder="left-down" width="47" height="16" tilewidth="64" tileheight="64" infinite="0" backgroundcolor="#1d1128" nextlayerid="36" nextobjectid="369">
  <tileset firstgid="1" name="cave" tilewidth="64" tileheight="64" tilecount="100" columns="20">
   <image source="cave.png" trans="ffffff" width="1280" height="320"/>
  </tileset>
