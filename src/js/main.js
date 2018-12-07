@@ -26,6 +26,7 @@ var player;
 var cursors;
 var groundLayer, decorationLayer, keyLayer, stillLavaLayer, lavaObjects, lavaObjectsGroup, coinObjects, coinObjectsGroup;
 var scoreValText, deadsValText, keysValText;
+var muteButton, muted = false;
 var score = 0;
 var keys = 0;
 var deads = 0;
@@ -75,6 +76,7 @@ function preload() {
 
     // player animations
     this.load.atlas('player', 'assets/player.png', 'assets/player.json');
+    this.load.atlas('mute', 'assets/mute.png', 'assets/mute.json');
 
     preloadAudio(this);
 }
@@ -139,6 +141,33 @@ function createPlayerAnims(prevThis) {
         repeat: -1
     });
 }
+
+
+function createMuteStates(prevThis) {
+    //https://www.leshylabs.com/apps/sstool/
+    prevThis.anims.create({
+        key: 'muted',
+        frames: [{key: 'mute', frame: 'muted'}],
+        frameRate: 10,
+    });
+    prevThis.anims.create({
+        key: 'unmuted',
+        frames: [{key: 'mute', frame: 'unmuted'}],
+        frameRate: 10,
+    });
+
+    prevThis.anims.create({
+        key: 'mutedHover',
+        frames: [{key: 'mute', frame: 'mutedHover'}],
+        frameRate: 10,
+    });
+    prevThis.anims.create({
+        key: 'unmutedHover',
+        frames: [{key: 'mute', frame: 'unmutedHover'}],
+        frameRate: 10,
+    });
+}
+
 
 function createCoins(prevThis) {
     // coin image used as tileset
@@ -262,6 +291,38 @@ function createAudio(prevThis) {
     prevThis.sound.add('sfx:key');
 }
 
+function createMuteButton(prevThis) {
+    muteButton = prevThis.add.sprite(860, 40, 'mute').setInteractive();
+    muteButton.setScrollFactor(0);
+    muteButton.anims.play('unmuted', true);
+    
+    muteButton.on('pointerover', function (event) {
+        if(muted == true)
+            muteButton.anims.play('mutedHover', true);
+        else
+            muteButton.anims.play('unmutedHover', true);
+
+
+    });
+    
+    muteButton.on('pointerout', function (event) { 
+        if(muted == true)
+            muteButton.anims.play('muted', true);
+        else 
+            muteButton.anims.play('unmuted', true);
+    });
+
+    muteButton.on('pointerdown', function (event) { 
+        muted = !muted;
+        if(muted == true)
+            muteButton.anims.play('muted', true);
+        else 
+            muteButton.anims.play('unmuted', true);
+
+
+    });
+}
+
 function create() {
     loadMap(this);
     createPlayer(this);
@@ -271,7 +332,8 @@ function create() {
     createLava(this);
     createScoreText(this);
     createAudio(this);
-
+    createMuteStates(this);
+    createMuteButton(this);
 
     cursors = this.input.keyboard.createCursorKeys();
 
@@ -286,7 +348,8 @@ function create() {
 
 // this function will be called when the player touches a coin
 function collectCoin(player, coin) {
-    this.sound.play('sfx:coin');
+    if(muted == false)
+        this.sound.play('sfx:coin');
 
     coin.destroy();
 
@@ -295,11 +358,11 @@ function collectCoin(player, coin) {
 }
 
 function lavaDie(player, lava) {
+    // adds 3 times not one -needs fixing 
     this.physics.world.colliders.destroy();
 
-    this.sound.play('sfx:coin');
-
-    this.scene.restart();
+    if(muted == false)
+        this.sound.play('sfx:coin');
 
     score -= 20;
     keys = 0;
@@ -308,11 +371,14 @@ function lavaDie(player, lava) {
     updateScore();
     updateKeys();
     updateDeads();
+
+    this.scene.restart();
 }
 
 // this function will be called when the player touches a coin
 function collectKey(sprite, tile) {
-    this.sound.play('sfx:key');
+    if(muted == false)
+        this.sound.play('sfx:key');
 
     keyLayer.removeTileAt(tile.x, tile.y); // remove the tile/coin
 
@@ -357,8 +423,9 @@ function update(time, delta) {
         player.anims.play('idle', true);
     }
 
-    if (cursors.up.isDown && player.body.onFloor()) {
-        this.sound.play('sfx:jump');
+    if (cursors.up.isDown && player.body.onFloor() && !player.body.touching.down) {
+        if(muted == false)
+            this.sound.play('sfx:jump');
 
         player.body.setVelocityY(-700);
     }
