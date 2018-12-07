@@ -34,6 +34,7 @@ var score = 0;
 var keys = 0;
 var deaths = 0;
 var levelId;
+var died = false;
 
 function preloadTextures(prevThis) {
     // tiles in spritesheet 
@@ -409,6 +410,8 @@ function create() {
     createMuteStates(this);
     createMuteButton(this);
 
+    died = false;
+    
     cursors = this.input.keyboard.createCursorKeys();
 
     // set bounds so the camera won't go outside the game world
@@ -430,22 +433,26 @@ function collectCoin(player, coin) {
     updateScore();
 }
 
+
 function lavaDeath(player, lava) {
-    // adds 3 times not one -needs fixing 
-    this.physics.world.colliders.destroy();
+    if(died == false) {
+        died = true;
+        // adds 3 times not one -needs fixing 
+        this.physics.world.colliders.destroy();
 
-    if(muted == false)
-        this.sound.play('sfx:death');
+        if(muted == false)
+            this.sound.play('sfx:death');
 
-    score -= 20;
-    keys = 0;
-    deaths++;
+        score -= 20;
+        keys = 0;
+        deaths++;
 
-    updateScore();
-    updateKeys();
-    updateDeads();
+        updateScore();
+        updateKeys();
+        updateDeads();
 
-    this.scene.restart();
+        this.scene.restart();
+    }
 }
 
 // this function will be called when the player touches a coin
