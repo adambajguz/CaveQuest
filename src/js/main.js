@@ -26,7 +26,8 @@ const LEVEL_COUNT = 3;
 var map;
 var player;
 var cursors;
-var groundLayer, decorationLayer, keyLayer, exitDoorLayer, stillLavaLayer, lavaObjects, lavaObjectsGroup, coinObjects, coinObjectsGroup;
+var groundLayer, decorationLayer, keyLayer, exitDoorLayer, stillLavaLayer,
+    lavaObjects, lavaObjectsGroup, coinObjects, coinObjectsGroup, spiderObjects, spiderObjectsGroup;
 var groundTiles;
 var scoreValText, levelValText, deathsValText, keysValText;
 var muteButton, muted = false;
@@ -61,6 +62,11 @@ function preloadTextures(prevThis) {
         frameWidth: 64,
         frameHeight: 64
     });
+
+    prevThis.load.spritesheet('spider', 'assets/spider.png', {
+        frameWidth: 84,
+        frameHeight: 64
+    });
 }
 
 function preloadAudio(prevThis) {
@@ -81,6 +87,10 @@ function preloadAudio(prevThis) {
     });
 
     prevThis.load.audio('sfx:levelEnd', 'audio/level_end.wav', {
+        instances: 1
+    });
+
+    prevThis.load.audio('sfx:killSpider', 'audio/stomp.wav', {
         instances: 1
     });
 }
@@ -261,8 +271,8 @@ function createCoins(prevThis) {
     coinObjectsGroup.refresh(); //physics body needs to refresh
 
     prevThis.physics.add.overlap(player, coinObjectsGroup, collectCoin, null, prevThis);
-
 }
+
 function createLava(prevThis) {
     var lavaTiles = map.addTilesetImage('lava');
     stillLavaLayer = map.createDynamicLayer('Lava', lavaTiles, 0, 0);
@@ -285,12 +295,12 @@ function createLava(prevThis) {
 
     lavaObjectsGroup = prevThis.physics.add.staticGroup({});
 
-    lavaObjects.forEach(coin => {
-        let obj = lavaObjectsGroup.create(coin.x, coin.y, 'lava');
-        obj.body.width = coin.width;
-        obj.body.height = coin.height;
+    lavaObjects.forEach(lava => {
+        let obj = lavaObjectsGroup.create(lava.x, lava.y, 'lava');
+        obj.body.width = lava.width;
+        obj.body.height = lava.height;
         obj.visible = true;
-        coin.visible = false;
+        lava.visible = false;
         prevThis.anims.play('lavaAnim', obj);
 
     });
@@ -392,6 +402,51 @@ function setMuteButton()
         muteButton.anims.play('unmuted', true);
 }
 
+
+function createSpiders(prevThis) {
+    // coin image used as tileset
+    // add coins as tiles
+    //coinLayer = map.createDynamicLayer('Coins', coinTiles, 0, 0);
+    prevThis.anims.create({
+        key: 'spiderWalk',
+        frames: prevThis.anims.generateFrameNumbers('spider', {
+            start: 0,
+            end: 2
+        }),
+        frameRate: 8,
+        repeat: -1
+    });
+ 
+    prevThis.anims.create({
+        key: 'spiderAnimDeath',
+        frames: prevThis.anims.generateFrameNumbers('spider', { frames: [0, 4, 0, 4, 0, 4, 3, 3, 3, 3, 3, 3] }),
+        frameRate: 12,
+    });
+
+    spiderObjects = map.createFromObjects('SpiderObj', 111, {
+        key: 'spider'
+    });
+
+    spiderObjectsGroup = prevThis.physics.add.staticGroup({});
+
+    spiderObjects.forEach(spider => {
+        let obj = spiderObjectsGroup.create(spider.x, spider.y, 'spider');
+        obj.body.width = spider.width;
+        obj.body.height = spider.height;
+        obj.visible = true;
+        spider.visible = false;
+        obj.immovable = false;
+        obj.body.immovable = false;
+
+        obj.setCollideWorldBounds(true); // don't go out of the map    
+
+        prevThis.anims.play('spiderWalk', obj);
+    });
+    spiderObjectsGroup.refresh(); //physics body needs to refresh
+
+    prevThis.physics.add.overlap(player, spiderObjectsGroup, spiderPlayerAction, null, prevThis);
+}
+
 function create() {
     loadMap(this);
 
@@ -405,6 +460,7 @@ function create() {
     createCoins(this);
     createKeys(this);
     createLava(this);
+    createSpiders(this);
     createScoreText(this);
     createAudio(this);
     createMuteStates(this);
@@ -420,6 +476,96 @@ function create() {
     this.cameras.main.startFollow(player);
 
     this.cameras.main.setBackgroundColor('#1D1128');
+}
+
+
+
+// //
+// // Spider (enemy)
+// //
+
+// function Spider(game, x, y) {
+//     Phaser.Sprite.call(this, game, x, y, 'spider');
+
+//     // anchor
+//     this.anchor.set(0.5);
+//     // animation
+//     this.animations.add('crawl', [0, 1, 2], 8, true);
+//     this.animations.add('die', [0, 4, 0, 4, 0, 4, 3, 3, 3, 3, 3, 3], 12);
+//     this.animations.play('crawl');
+
+//     // physic properties
+//     this.game.physics.enable(this);
+//     this.body.collideWorldBounds = true;
+//     this.body.velocity.x = Spider.SPEED;
+// }
+
+// Spider.SPEED = 100;
+
+// // inherit from Phaser.Sprite
+// Spider.prototype = Object.create(Phaser.Sprite.prototype);
+// Spider.prototype.constructor = Spider;
+
+// Spider.prototype.update = function () {
+//     // check against walls and reverse direction if necessary
+//     if (this.body.touching.right || this.body.blocked.right) {
+//         this.body.velocity.x = -Spider.SPEED; // turn left
+//     }
+//     else if (this.body.touching.left || this.body.blocked.left) {
+//         this.body.velocity.x = Spider.SPEED; // turn right
+//     }
+// };
+
+// Spider.prototype.die = function () {
+//     this.body.enable = false;
+
+//     this.animations.play('die').onComplete.addOnce(function () {
+//         this.kill();
+//     }, this);
+// };
+
+function spiderPlayerAction(player, spider) 
+{   
+    if(!player.body.onFloor())
+    {
+        if(muted == false)
+            this.sound.play('sfx:killSpider');
+
+        spider.body.enable = false;
+
+        spider.anims.play('spiderAnimDeath')
+        spider.on('animationcomplete', killSpider)
+    }
+    else
+    {
+        if(died == false) {
+            died = true;
+            // adds 3 times not one -needs fixing 
+            this.physics.world.colliders.destroy();
+    
+            if(muted == false)
+                this.sound.play('sfx:death');
+    
+            score -= 20;
+            keys = 0;
+            deaths++;
+    
+            updateScore();
+            updateKeys();
+            updateDeads();
+    
+            this.scene.restart();
+        }
+    }
+
+}
+
+function killSpider(animation, frame)
+{    
+    this.destroy();
+
+    score += 5;;
+    updateScore();
 }
 
 // this function will be called when the player touches a coin
@@ -504,6 +650,19 @@ function updateDeads()
 
 
 function update(time, delta) {
+    spiderObjectsGroup.children.entries.forEach(spider => {
+        if (spider.body.touching.right || spider.body.blocked.right) {
+            spider.body.velocity.x = -100; // turn left
+            player.flipX = true;
+        }
+        else if (spider.body.touching.left || spider.body.blocked.left) {
+            spider.body.velocity.x = 100; // turn right
+            player.flipX = false;
+        }
+    
+    });
+
+
     if (cursors.left.isDown) {
         player.body.setVelocityX(-200);
         player.anims.play('walk', true); // walk left
