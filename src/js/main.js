@@ -35,7 +35,7 @@ var score = 0;
 var keys = 0;
 var deaths = 0;
 var levelId;
-var died = false;
+var died = false, toNextLevel = false;
 
 function preloadTextures(prevThis) {
     // tiles in spritesheet 
@@ -437,6 +437,8 @@ function createSpiders(prevThis) {
         spider.visible = false;
         obj.immovable = false;
         obj.body.immovable = false;
+        obj.body.gravity.y = 800;
+
 
         obj.setCollideWorldBounds(true); // don't go out of the map    
 
@@ -444,7 +446,7 @@ function createSpiders(prevThis) {
     });
     spiderObjectsGroup.refresh(); //physics body needs to refresh
 
-    prevThis.physics.add.overlap(player, spiderObjectsGroup, spiderPlayerAction, null, prevThis);
+    prevThis.physics.add.collider(spiderObjectsGroup, player, spiderPlayerAction, null, prevThis);
 }
 
 function create() {
@@ -467,6 +469,7 @@ function create() {
     createMuteButton(this);
 
     died = false;
+    toNextLevel = false;
     
     cursors = this.input.keyboard.createCursorKeys();
 
@@ -480,91 +483,29 @@ function create() {
 
 
 
-// //
-// // Spider (enemy)
-// //
-
-// function Spider(game, x, y) {
-//     Phaser.Sprite.call(this, game, x, y, 'spider');
-
-//     // anchor
-//     this.anchor.set(0.5);
-//     // animation
-//     this.animations.add('crawl', [0, 1, 2], 8, true);
-//     this.animations.add('die', [0, 4, 0, 4, 0, 4, 3, 3, 3, 3, 3, 3], 12);
-//     this.animations.play('crawl');
-
-//     // physic properties
-//     this.game.physics.enable(this);
-//     this.body.collideWorldBounds = true;
-//     this.body.velocity.x = Spider.SPEED;
-// }
-
-// Spider.SPEED = 100;
-
-// // inherit from Phaser.Sprite
-// Spider.prototype = Object.create(Phaser.Sprite.prototype);
-// Spider.prototype.constructor = Spider;
-
-// Spider.prototype.update = function () {
-//     // check against walls and reverse direction if necessary
-//     if (this.body.touching.right || this.body.blocked.right) {
-//         this.body.velocity.x = -Spider.SPEED; // turn left
-//     }
-//     else if (this.body.touching.left || this.body.blocked.left) {
-//         this.body.velocity.x = Spider.SPEED; // turn right
-//     }
-// };
-
-// Spider.prototype.die = function () {
-//     this.body.enable = false;
-
-//     this.animations.play('die').onComplete.addOnce(function () {
-//         this.kill();
-//     }, this);
-// };
 
 function spiderPlayerAction(player, spider) 
 {   
     if(!player.body.onFloor())
     {
+        spider.body.enable = false;
+
         if(muted == false)
             this.sound.play('sfx:killSpider');
 
-        spider.body.enable = false;
 
         spider.anims.play('spiderAnimDeath')
         spider.on('animationcomplete', killSpider)
     }
     else
-    {
-        if(died == false) {
-            died = true;
-            // adds 3 times not one -needs fixing 
-            this.physics.world.colliders.destroy();
-    
-            if(muted == false)
-                this.sound.play('sfx:death');
-    
-            score -= 20;
-            keys = 0;
-            deaths++;
-    
-            updateScore();
-            updateKeys();
-            updateDeads();
-    
-            this.scene.restart();
-        }
-    }
-
+        die(this);
 }
 
 function killSpider(animation, frame)
 {    
     this.destroy();
 
-    score += 5;;
+    score += 5;
     updateScore();
 }
 
@@ -581,13 +522,24 @@ function collectCoin(player, coin) {
 
 
 function lavaDeath(player, lava) {
+    die(this);
+}
+
+function die(prevThis)
+{
     if(died == false) {
         died = true;
-        // adds 3 times not one -needs fixing 
-        this.physics.world.colliders.destroy();
+
+        prevThis.cameras.main.shake(500);
+ 
+        // restart game
+        prevThis.time.delayedCall(500, function() {
+            prevThis.scene.restart();
+        }, [], prevThis);
+
 
         if(muted == false)
-            this.sound.play('sfx:death');
+        prevThis.sound.play('sfx:death');
 
         score -= 20;
         keys = 0;
@@ -596,8 +548,6 @@ function lavaDeath(player, lava) {
         updateScore();
         updateKeys();
         updateDeads();
-
-        this.scene.restart();
     }
 }
 
@@ -622,12 +572,24 @@ function exitLevel(sprite, tile) {
         if(muted == false)
             this.sound.play('sfx:levelEnd');
 
+        toNextLevel = true;
+        this.physics.world.colliders.destroy();
+
         score += 100;
         keys = 0;
 
         setLevelNumberToLocalStorage(getLevelNumberFromLocalStorage() + 1);
 
-        this.scene.restart();
+        // fade camera
+        this.time.delayedCall(750, function() {
+            this.cameras.main.fade(750);
+        }, [], this);
+
+        // restart game
+        this.time.delayedCall(1500, function() {
+            this.scene.restart();
+        }, [], this);
+ 
     }
 
     return false;
@@ -648,40 +610,89 @@ function updateDeads()
     deathsValText.setText(deaths.toString());
 }
 
-
+const spiderRange = 250;
 function update(time, delta) {
-    spiderObjectsGroup.children.entries.forEach(spider => {
-        if (spider.body.touching.right || spider.body.blocked.right) {
-            spider.body.velocity.x = -100; // turn left
-            player.flipX = true;
-        }
-        else if (spider.body.touching.left || spider.body.blocked.left) {
-            spider.body.velocity.x = 100; // turn right
-            player.flipX = false;
-        }
+    if(toNextLevel == false && died == false) {
+        spiderObjectsGroup.children.entries.forEach(spider => {
+            if(spider.max == null)
+            {
+                spider.direction_left = true;
+                spider.max = 0;
+                spider.speed = 1
+            }
+
+            if (spider.direction_left == true && spider.max <= spiderRange)
+            {
+                spider.x += -spider.speed; // turn left
+                spider.body.x += -spider.speed; // turn left
+
+
+                if(spider.max++ === spiderRange)
+                {
+                    spider.max = 0
+                    spider.direction_left = false;
+                    spider.flipX = true;
+
+                }
+            } else if (spider.direction_left == false && spider.max <= spiderRange)
+            {
+                spider.x += spider.speed; // turn right
+                spider.body.x += spider.speed; // turn left
+
+            
+                if(spider.max++ === spiderRange)
+                {
+                    spider.max = 0
+                    spider.direction_left = true;
+                    spider.flipX = false;
+                }
+
+            }
+
+            // if (!spider.body.touching.right && !spider.body.wasTouching.right) {
+            //     spider.x += 1; // turn left
+            //     spider.body.x += 1; // turn left
+
+            //     spider.flipX = false;
+            // }
+            // else if (!spider.body.touching.left && !spider.body.wasTouching.left) {
+            //     spider.x += -1; // turn right
+            //     spider.body.x += -1; // turn left
+
+            //     spider.flipX = true;
+            // }
     
-    });
+        });
 
 
-    if (cursors.left.isDown) {
-        player.body.setVelocityX(-200);
-        player.anims.play('walk', true); // walk left
-        player.flipX = true; // flip the sprite to the left
+        let enemies = spiderObjectsGroup.getChildren();
+        let numEnemies = enemies.length;
+    
+        for (let i = 0; i < numEnemies; i++) {
+            ///console.log(enemies[i])
+            enemies[i].body.velocity.x = 200; // turn left
+        }
 
-    } else if (cursors.right.isDown) {
-        player.body.setVelocityX(200);
-        player.anims.play('walk', true);
-        player.flipX = false; // use the original sprite looking to the right
+        if (cursors.left.isDown) {
+            player.body.setVelocityX(-200);
+            player.anims.play('walk', true); // walk left
+            player.flipX = true; // flip the sprite to the left
 
-    } else {
-        player.body.setVelocityX(0);
-        player.anims.play('idle', true);
-    }
+        } else if (cursors.right.isDown) {
+            player.body.setVelocityX(200);
+            player.anims.play('walk', true);
+            player.flipX = false; // use the original sprite looking to the right
 
-    if (cursors.up.isDown && player.body.onFloor() && !player.body.touching.down) {
-        if(muted == false)
-            this.sound.play('sfx:jump');
+        } else {
+            player.body.setVelocityX(0);
+            player.anims.play('idle', true);
+        }
 
-        player.body.setVelocityY(-700);
+        if (cursors.up.isDown && player.body.onFloor() && !player.body.touching.down) {
+            if(muted == false)
+                this.sound.play('sfx:jump');
+
+            player.body.setVelocityY(-700);
+        }
     }
 }
