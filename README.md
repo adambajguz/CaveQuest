@@ -1,4 +1,4 @@
-# JS-Game
+# CaveQuest
 
 A simple browser platform game inspired by original Mario created using JS and Phaser
 
